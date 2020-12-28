@@ -1,6 +1,18 @@
+#include <FreeRTOS.h>
+#include <task.h>
+#include <stdlib.h>
+#include <string.h>
+#include "usb.h"
 #include "sketch.h"
+#include "controller.h"
 
-SwitchController controller;
+#define _ITERATIONS 1000
+
+Command script[] = {
+    {A, 5},
+};
+
+JoyConReport controller;
 
 void delay(uint64_t ms)
 {
@@ -9,71 +21,132 @@ void delay(uint64_t ms)
 
 void reset_controls()
 {
-    controller = SwitchController();
-    controller.data.LX = STICK_CENTER;
-    controller.data.LY = STICK_CENTER;
-    controller.data.RX = STICK_CENTER;
-    controller.data.RX = STICK_CENTER;
-    controller.data.HAT = HAT_CENTER;
+    // Zero out controller data
+    memset(&controller, 0, sizeof(JoyConReport));
+    controller.LX = STICK_CENTER;
+    controller.LY = STICK_CENTER;
+    controller.RX = STICK_CENTER;
+    controller.RY = STICK_CENTER;
+    controller.HAT = HAT_CENTER;
 }
 
-void delay_and_reset(uint64_t ms)
+void hold_and_reset(uint64_t ms)
 {
     delay(ms);
     reset_controls();
-    delay(1000);
+    delay(500);
 }
 
-void send_control_data()
+void push_and_delay(uint64_t ms)
 {
-    usb_write(controller.bytes, 8);
+    delay(300);
+    reset_controls();
+    delay(ms);
 }
 
 void setup()
 {
-    controller = SwitchController();
+    reset_controls();
 }
 
 void update()
 {
-    // Assume we're on controller grip/order screen
-    // delay_and_reset(3000);
+    // Initial delay to account for device initialization
     delay(3000);
 
-    controller.data.L = 1;
-    controller.data.R = 1;
+    for (int i = 0; i < _ITERATIONS; i++)
+    {
+        for (auto &command : script)
+        {
 
-    delay(1000);
-    reset_controls();
-    delay(3000);
+            switch (command.button)
+            {
 
-    // Goto home screen
-    controller.data.home = 1;
-    delay_and_reset(200);
+            case UP:
+                controller.LY = STICK_MIN;
+                break;
 
-    // Home again to go to game
-    controller.data.home = 1;
-    delay_and_reset(200);
+            case LEFT:
+                controller.LX = STICK_MIN;
+                break;
 
-    // Wait for game to launch
-    delay(3000);
+            case DOWN:
+                controller.LY = STICK_MAX;
+                break;
 
-    // Jump three
-    controller.data.A = 1;
-    delay_and_reset(500);
+            case RIGHT:
+                controller.LX = STICK_MAX;
+                break;
 
-    controller.data.A = 1;
-    delay_and_reset(500);
+            case A:
+                controller.Buttons |= SWITCH_A;
+                break;
 
-    controller.data.A = 1;
-    delay_and_reset(500);
+            case B:
+                controller.Buttons |= SWITCH_B;
+                break;
+
+            case X:
+                controller.Buttons |= SWITCH_X;
+                break;
+
+            case Y:
+                controller.Buttons |= SWITCH_Y;
+                break;
+
+            case L:
+                controller.Buttons |= SWITCH_L;
+                break;
+
+            case R:
+                controller.Buttons |= SWITCH_R;
+                break;
+
+            case PLUS:
+                controller.Buttons |= SWITCH_PLUS;
+                break;
+
+            case TRIGGERS:
+                controller.Buttons |= SWITCH_L | SWITCH_R;
+                break;
+
+            case UP_LEFT:
+                controller.RX = STICK_MIN;
+                controller.LX = STICK_MIN;
+                break;
+
+            case UP_RIGHT:
+                controller.LY = STICK_MIN;
+                controller.RX = STICK_MAX;
+                break;
+
+            default:
+                controller.LX = STICK_CENTER;
+                controller.LY = STICK_CENTER;
+                controller.RX = STICK_CENTER;
+                controller.RY = STICK_CENTER;
+                controller.HAT = HAT_CENTER;
+                break;
+            }
+            hold_and_reset(command.duration * 10);
+        }
+    }
 
     for (;;)
-        ;
+    {
+        // Script execution is complete. Trap
+    }
 }
 
 void dispatch()
 {
-    send_control_data();
-    delay(10);
+    // Initial delay to allow device to connect
+    delay(2000);
+    for (;;)
+    {
+        // Send report data
+        usb_write((uint8_t *)&controller, sizeof(JoyConReport));
+        // To avoid flooding the device
+        delay(10);
+    }
 }

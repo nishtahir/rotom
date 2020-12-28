@@ -1,7 +1,11 @@
+#include <FreeRTOS.h>
+#include <task.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/cm3/systick.h>
+#include <libopencm3/stm32/gpio.h>
+#include "usb.h"
 #include "sketch.h"
 #include "time.h"
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/gpio.h>
 
 /*
  * Handler in case our application overflows the stack
@@ -11,11 +15,13 @@ void vApplicationStackOverflowHook(
     char *pcTaskName __attribute__((unused)))
 {
   for (;;)
-    ;
+  {
+    // No-op
+  }
 }
 
 /**
- * Handler to poll usb and service requests to the host
+ * Handler to poll usb and service requests from the host
  */
 void poll_usb_task(void *args __attribute__((unused)))
 {
@@ -25,7 +31,9 @@ void poll_usb_task(void *args __attribute__((unused)))
   }
 }
 
-// Main loop to execute game tasks
+/**
+ * Update loop to prepare controller state for dispatch
+ */
 void update_task(void *args __attribute__((unused)))
 {
   for (;;)
@@ -34,6 +42,9 @@ void update_task(void *args __attribute__((unused)))
   }
 }
 
+/**
+ * Dispatch controller updates
+ */
 void dispatch_task(void *args __attribute__((unused)))
 {
   for (;;)
@@ -42,10 +53,20 @@ void dispatch_task(void *args __attribute__((unused)))
   }
 }
 
+/**
+ * Init and set main sys clock
+ */
+static void sys_tick_init()
+{
+  systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+  systick_interrupt_enable();
+  systick_counter_enable();
+}
+
 int main(void)
 {
   // RCC Set System Clock PLL at 72MHz from
-  // High speed external oscillator at 8MHz
+  // High speed external oscillator
   rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
   // LED_BUILTIN is on GPIO bank C.
@@ -63,17 +84,25 @@ int main(void)
   usb_init();
   gpio_toggle(GPIOC, GPIO13);
 
+  // TODO - we probably want to poll the USB  and kick off the
+  // other tasks when the device is available
+  xTaskCreate(poll_usb_task, "usb_task", 100, NULL, 2, NULL);
+
+  // Setup sketch
   setup();
 
-  xTaskCreate(poll_usb_task, "usb_task", 100, NULL, 2, NULL);
-  xTaskCreate(update_task, "update_task", 100, NULL, 2, NULL);
+  // Start the update and dispatch tasks
   xTaskCreate(dispatch_task, "dispatch_task", 100, NULL, 2, NULL);
+  xTaskCreate(update_task, "update_task", 100, NULL, 2, NULL);
 
   vTaskStartScheduler();
 
   // The task scheduler is blocking,
   // we should never get here
   for (;;)
-    ;
+  {
+    // No-op
+  }
+
   return 0;
 }
