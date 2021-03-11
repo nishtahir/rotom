@@ -57,3 +57,5 @@ of iterations to perform before halting by adjusting the following variables
 This is based on [libOpenCM3](https://libopencm3.org/) and uses a [FreeRTOS](https://www.freertos.org/)
 scheduler to run USB communication in parallel with script execution. This is sub optimal in
 execution speed but was decided on in order to make it easier to maintain. As a result button press durations are computed in MS rather than ticks.
+
+* [STM32 libopencm3 FreeRTOS port by bjwschaap](https://github.com/bjwschaap/platformio-libopencm3-freertos)
