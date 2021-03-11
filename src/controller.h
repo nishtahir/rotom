@@ -2,7 +2,7 @@
 #define CONTROLLER_H
 #include <stdlib.h>
 
-// Sourced and adapted from 
+// Sourced and adapted from
 // https://github.com/bertrandom/snowball-thrower/blob/master/Joystick.h
 #define HAT_TOP 0x00
 #define HAT_TOP_RIGHT 0x01
@@ -64,6 +64,7 @@ enum ControlButtons
     TRIGGERS,
     UP_RIGHT,
     UP_LEFT,
+    SPIN,
 };
 
 struct Command
