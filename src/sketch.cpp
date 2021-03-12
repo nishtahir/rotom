@@ -7,7 +7,11 @@
 #include "controller.h"
 
 #define SCRIPT_ITERATIONS 100
-#define SPIN_DURATION_MS 720000
+
+// Setting the value above 60s seems to cause it to
+// overflow. Not sure why this happens so we're spliting the cylcing
+// into 2 spin commands for now.
+#define HALF_SPIN_DURATION_MS 36000
 
 Command script[] = {
     // Fly
@@ -41,14 +45,17 @@ Command script[] = {
     {UP_RIGHT, 3000},
     // Hop on bike
     {PLUS, 300},
-    {SPIN, SPIN_DURATION_MS},
+    {SPIN, HALF_SPIN_DURATION_MS},
+    {SPIN, HALF_SPIN_DURATION_MS},
     // Oh?
     {A, 300},
     {NOTHING, 20000},
     // Fade animation
     {A, 3000},
+    {NOTHING, 2000},
     // Hop off of bike
     {PLUS, 300},
+    {NOTHING, 1000},
 };
 
 JoyConReport controller;
